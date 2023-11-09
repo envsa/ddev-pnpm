@@ -1,26 +1,25 @@
 setup() {
   set -eu -o pipefail
+  
   export DIR="$( cd "$( dirname "$BATS_TEST_FILENAME" )" >/dev/null 2>&1 && pwd )/.."
-  export TESTDIR=~/tmp/test-addon-template
+  export TESTDIR=~/tmp/ddev-pnpm
   mkdir -p $TESTDIR
-  export PROJNAME=test-addon-template
+  export PROJNAME=ddev-pnpm
   export DDEV_NON_INTERACTIVE=true
-  ddev delete -Oy ${PROJNAME} >/dev/null 2>&1 || true
+  ddev delete -Oy ${PROJNAME} || true
   cd "${TESTDIR}"
   ddev config --project-name=${PROJNAME}
-  ddev start -y >/dev/null
+  ddev start
 }
 
 health_checks() {
-  # Do something useful here that verifies the add-on
-  # ddev exec "curl -s elasticsearch:9200" | grep "${PROJNAME}-elasticsearch"
-  ddev exec "curl -s https://localhost:443/"
+  run ddev pnpm --version
 }
 
 teardown() {
   set -eu -o pipefail
   cd ${TESTDIR} || ( printf "unable to cd to ${TESTDIR}\n" && exit 1 )
-  ddev delete -Oy ${PROJNAME} >/dev/null 2>&1
+  ddev delete -Oy ${PROJNAME}
   [ "${TESTDIR}" != "" ] && rm -rf ${TESTDIR}
 }
 
@@ -36,9 +35,8 @@ teardown() {
 @test "install from release" {
   set -eu -o pipefail
   cd ${TESTDIR} || ( printf "unable to cd to ${TESTDIR}\n" && exit 1 )
-  echo "# ddev get ddev/ddev-addon-template with project ${PROJNAME} in ${TESTDIR} ($(pwd))" >&3
-  ddev get ddev/ddev-addon-template
-  ddev restart >/dev/null
+  echo "# ddev get envsa/ddev-pnpm with project ${PROJNAME} in ${TESTDIR} ($(pwd))" >&3
+  ddev get envsa/ddev-pnpm
+  ddev restart
   health_checks
 }
-
