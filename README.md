@@ -18,8 +18,21 @@ For more information, visit [pnpm.io](https://pnpm.io)
 
 ## Installation
 
+For DDEV v1.23.5 or above run
+
+```sh
+ddev add-on get envsa/ddev-pnpm
+```
+
+For earlier versions of DDEV run
+
 ```sh
 ddev get envsa/ddev-pnpm
+```
+
+Then restart your project
+
+```sh
 ddev restart
 ```
 
