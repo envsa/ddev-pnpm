@@ -7,4 +7,9 @@
 ## ExecRaw: true
 ## HostWorkingDir: true
 
-pnpm "$@"
+# If a $PNPM_DIRECTORY is set, run our PNPM commands in that directory
+if [ -n "$PNPM_DIRECTORY" ]; then
+  pnpm --dir "$PNPM_DIRECTORY" "$@"
+else
+  pnpm "$@"
+fi
