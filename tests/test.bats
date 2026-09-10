@@ -73,30 +73,43 @@ health_checks() {
   fi
 
   # Verify the global cache is populated after install and reused across directories.
-  # Install is-odd@3.0.1 and verify it is stored in the global cache.
+  run ddev exec rm -rf /mnt/ddev-global-cache/pnpm
+  assert_success
+
   mkdir "${TESTDIR}/cache-first"
   cp "${DIR}/tests/testdata/frontend/package.json" "${TESTDIR}/cache-first/package.json"
   run ddev exec bash -c "cd /var/www/html/cache-first && pnpm install"
   assert_success
-  run ddev exec bash -c "grep -R 'is-odd' /mnt/ddev-global-cache/pnpm 2>/dev/null | grep '3.0.1'"
-  assert_success
 
-  # Install the same package version from a second directory and verify it is reused from cache
+  # Verify packages actually landed in the global cache, not some other store
+  run ddev exec bash -c "find /mnt/ddev-global-cache/pnpm -type f | wc -l"
+  assert_success
+  (( output > 0 ))
+
+  # Install the same package version from a second directory and verify it is
+  # fully satisfiable from the global cache alone, with no network access
   mkdir "${TESTDIR}/cache-second"
   cp "${DIR}/tests/testdata/frontend/package.json" "${TESTDIR}/cache-second/package.json"
-  run ddev exec bash -c "cd /var/www/html/cache-second && pnpm install"
+
+  run ddev exec bash -c "cd /var/www/html/cache-second && pnpm install --offline"
   assert_success
+
   run ddev exec bash -c "cd /var/www/html/cache-second && pnpm list 2>&1 | grep 'is-odd'"
   assert_success
   assert_output --partial "3.0.1"
 
-  # Install a different version of the same package and verify the correct version is installed
+  # Install a different version of the same package: the cache alone is not
+  # enough, so an offline install must fail, but a normal install succeeds
+  # and pulls the new version
   mkdir "${TESTDIR}/cache-third"
   printf '{"name":"third","version":"1.0.0","dependencies":{"is-odd":"2.0.0"}}' > "${TESTDIR}/cache-third/package.json"
+
+  run ddev exec bash -c "cd /var/www/html/cache-third && pnpm install --offline"
+  assert_failure
+
   run ddev exec bash -c "cd /var/www/html/cache-third && pnpm install"
   assert_success
-  run ddev exec bash -c "grep -R 'is-odd' /mnt/ddev-global-cache/pnpm 2>/dev/null | grep '2.0.0'"
-  assert_success
+
   run ddev exec bash -c "cd /var/www/html/cache-third && pnpm list 2>&1 | grep 'is-odd'"
   assert_success
   assert_output --partial "2.0.0"
@@ -175,10 +188,6 @@ teardown() {
 
 @test "v20 Node.js" {
   set -eu -o pipefail
-
-  if [[ "$(ddev --version)" == "ddev version v1.25.2" ]]; then
-    skip "Node.js v20 requires ddev v1.25.3+"
-  fi
 
   ddev config --nodejs-version=20
   assert_success
